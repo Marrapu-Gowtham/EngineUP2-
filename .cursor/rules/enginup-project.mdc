@@ -1,0 +1,31 @@
+---
+description: Core principles and rule index for the EnginUp South project.
+globs: "*" # Applies broadly, context is key
+alwaysApply: false 
+---
+
+- **Project Vision:** [Review EnginUp South Concept](mdc:path/to/your/concept-document.txt) - Empower South Indian engineering students with AI-driven career prep and skill-building.
+- **Development Workflow:** Follow the [dev_workflow.mdc](mdc:.cursor/rules/dev_workflow.mdc) guide for task management (`task-master` commands).
+    - Use `task-master parse-prd` on the concept doc initially.
+    - Break down features (Resume Builder, Portfolio Gen, etc.) into detailed tasks using `task-master expand`.
+    - Prioritize Phase 1 MVP features.
+- **Core Technologies (Initial Choices - Adapt as needed):**
+    - **Frontend:** React ([enginup-frontend.mdc](mdc:.cursor/rules/enginup-frontend.mdc))
+    - **Backend:** Python/Flask or Node.js/Express ([enginup-backend.mdc](mdc:.cursor/rules/enginup-backend.mdc)) - Decide based on team expertise & AI library preference.
+    - **Database:** PostgreSQL (Consider creating `enginup-db.mdc` for database guidelines)
+    - **AI Integration:** Primarily API-based initially ([enginup-ai.mdc](mdc:.cursor/rules/enginup-ai.mdc))
+    - **Hosting:** Cloud Platform (AWS/GCP/Azure)
+- **Regionalization Strategy:** ([enginup-regionalization.mdc](mdc:.cursor/rules/enginup-regionalization.mdc))
+    - Prioritize South India focus in content (jobs, companies, skills).
+    - Plan for multi-language UI/support later.
+- **Key Feature Rules (Create as needed):**
+    - [enginup-feature-resume.mdc](mdc:.cursor/rules/enginup-feature-resume.mdc)
+    - `enginup-feature-portfolio.mdc`
+    - `enginup-feature-jobs.mdc`
+    - `enginup-feature-coding.mdc`
+    - `enginup-feature-language.mdc`
+- **Code Quality & Testing:**
+    - Implement linting (ESLint/Prettier for frontend, Black/Flake8 for Python) early.
+    - Define basic unit/integration test strategies for backend APIs and frontend components.
+    - Test AI feature outputs for relevance and correctness.
+- **Rule Maintenance:** Follow [self_improve.mdc](mdc:.cursor/rules/self_improve.mdc) and [cursor_rules.mdc](mdc:.cursor/rules/cursor_rules.mdc). Update rules as the project evolves through phases. 

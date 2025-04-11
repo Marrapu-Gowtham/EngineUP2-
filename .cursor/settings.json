@@ -1,0 +1,7 @@
+{
+  "supabase": {
+    "url": "https://nlpiwdsldehfcfphohir.supabase.co",
+    "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5scGl3ZHNsZGVoZmNmcGhvaGlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQwMjIzMzYsImV4cCI6MjA1OTU5ODMzNn0.BsVufzKVdaTchMe_kWP9Is0fSSpaSfnk9iZrrMuNmB8",
+    "projectId": "nlpiwdsldehfcfphohir"
+  }
+}

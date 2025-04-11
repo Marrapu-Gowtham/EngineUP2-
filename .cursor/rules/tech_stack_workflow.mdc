@@ -1,0 +1,182 @@
+---
+description: Development workflow for the React/Vite/Tanstack/pnpm/Clerk/Supabase/Polar stack.
+globs: src/**/*.{ts,tsx}, supabase/**/*.{ts,sql}
+alwaysApply: false
+---
+
+- **Tech Stack Overview:**
+  - **Framework:** React + Vite with Tanstack Router
+  - **Package Manager:** pnpm
+  - **Auth:** Clerk (using JWT Template for backend integration)
+  - **Backend (Server Fn/Jobs/Database):** Supabase (Database, Edge Functions)
+  - **Payments:** Polar
+
+- **1. Project Setup:**
+  - Initialize React+Vite project:
+    ```bash
+    pnpm create vite your-project-name --template react-ts
+    cd your-project-name
+    ```
+  - Install Core Dependencies:
+    ```bash
+    pnpm add react react-dom @tanstack/router @clerk/clerk-react @supabase/supabase-js polar-sdk # Replace polar-sdk with actual package if different
+    ```
+  - Setup Supabase CLI:
+    ```bash
+    pnpm add -D supabase
+    pnpm supabase init # Initializes Supabase local dev setup
+    pnpm supabase login # Authenticate CLI
+    # Link to your Supabase Cloud project (get ref from project dashboard)
+    pnpm supabase link --project-ref your-project-ref 
+    ```
+  - Configure Clerk:
+    - Create a Clerk application in the Clerk Dashboard.
+    - Note down your Frontend API Key and Backend API Key.
+    - Set up a JWT Template named `supabase` in Clerk (Dashboard -> JWT Templates) to include necessary claims like `sub` (user ID) and any custom claims needed for Supabase RLS.
+  - Environment Variables (`.env`):
+    ```env
+    # Vite requires VITE_ prefix for client-side vars
+    VITE_CLERK_PUBLISHABLE_KEY=pk_...
+    CLERK_SECRET_KEY=sk_... # Used in backend/functions if needed
+
+    # Supabase (get from project dashboard or `supabase status`)
+    VITE_SUPABASE_URL=https://<your-project-ref>.supabase.co
+    VITE_SUPABASE_ANON_KEY=<your-anon-key>
+    SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key> # For backend/migrations if needed
+
+    # Polar
+    VITE_POLAR_CLIENT_KEY=...
+    POLAR_SECRET_KEY=... # For backend/webhooks
+    ```
+
+- **2. Frontend Development (React/Vite/Tanstack Router):**
+  - Build UI components within the `src/` directory.
+  - Structure routes using Tanstack Router (`src/routes/`).
+  - Run the development server: `pnpm dev`.
+  - Follow React best practices for component design and state management.
+
+- **3. Authentication (Clerk):**
+  - Wrap your application root (e.g., in `src/main.tsx`) with `<ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>`.
+  - Use Clerk components (`<SignIn>`, `<SignUp>`, `<UserProfile>`) and hooks (`useUser`, `useAuth`, `useClerk`) for authentication flows and user management.
+  - Secure routes using Clerk's `<SignedIn>` and `<SignedOut>` components or Tanstack Router's `beforeLoad` checks using `useAuth`.
+  - **Crucially:** When interacting with Supabase, get the Clerk JWT using the specific template:
+    ```typescript
+    import { useAuth } from "@clerk/clerk-react";
+    
+    const { getToken } = useAuth();
+    
+    // ... inside component or hook
+    const supabaseToken = await getToken({ template: "supabase" }); 
+    // Use this token to authenticate Supabase client requests
+    ```
+
+- **4. Backend (Supabase):**
+  - **Database Schema & Migrations:**
+    - Define your database schema (tables, relations, indexes) using SQL.
+    - Place migration files in `supabase/migrations/`.
+    - Generate new migrations based on local changes: `supabase db diff | supabase migration new <migration_name>`
+    - Apply migrations locally: `supabase migration up` (requires Docker) or `supabase start`.
+    - Apply migrations to linked Cloud project: `supabase migration push` (after thorough testing).
+  - **Row Level Security (RLS):**
+    - **Enable RLS** on tables containing sensitive user data.
+    - Create policies that verify the user ID from the Clerk JWT. Supabase automatically makes JWT claims available.
+      ```sql
+      -- Example RLS policy for a 'posts' table
+      ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
+
+      CREATE POLICY "Users can CRUD their own posts" 
+      ON posts
+      FOR ALL -- Or specify SELECT, INSERT, UPDATE, DELETE
+      USING (auth.uid() = (request.jwt ->> 'sub')::uuid) -- Assumes 'sub' claim holds the UUID user ID
+      WITH CHECK (auth.uid() = (request.jwt ->> 'sub')::uuid); 
+      ```
+    - Ensure your Clerk JWT Template (`supabase`) includes the `sub` claim matching the user ID format in your database (often UUID).
+  - **Serverless Logic (Edge Functions):**
+    - Create functions in `supabase/functions/<function_name>/index.ts` (uses Deno runtime).
+    - These are suitable for API endpoints, webhook handlers, background jobs triggered by events.
+    - **Secure Edge Functions:** Verify the `Authorization: Bearer <clerk-token>` header manually or using middleware. You can use Clerk's backend SDK or manually verify the JWT signature using Supabase secrets (`supabase secrets set JWKS_URL=...`).
+      ```typescript
+      // Example: supabase/functions/hello-user/index.ts
+      import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+      import { corsHeaders } from '../_shared/cors.ts' // Example shared CORS headers
+
+      serve(async (req: Request) => {
+        // Handle CORS preflight requests
+        if (req.method === 'OPTIONS') {
+          return new Response('ok', { headers: corsHeaders })
+        }
+
+        // TODO: Add JWT verification using Clerk Backend SDK or manual verification
+        // const authHeader = req.headers.get('Authorization');
+        // if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        //   return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        // }
+        // const token = authHeader.split(' ')[1];
+        // try {
+        //   const payload = await verifyClerkToken(token); // Implement verification logic
+        //   const userId = payload.sub;
+          
+          return new Response(JSON.stringify({ message: `Hello authenticated user!` }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          });
+        // } catch (error) {
+        //    return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        // }
+      });
+      ```
+    - Deploy functions: `supabase functions deploy <function_name>`.
+  - **Client Interaction (`@supabase/supabase-js`):**
+    - Initialize the client once (e.g., in `src/lib/supabaseClient.ts`).
+      ```typescript
+      import { createClient } from '@supabase/supabase-js'
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      ```
+    - Before making authenticated requests (database or functions), set the Clerk token:
+      ```typescript
+      import { supabase } from './lib/supabaseClient';
+      // ... inside component/hook where you have the token
+      const supabaseToken = await getToken({ template: "supabase" });
+      if (supabaseToken) {
+        supabase.auth.setAuth(supabaseToken); 
+      } else {
+        // Handle case where token is not available (user signed out?)
+        supabase.auth.setAuth(null); // Clear potentially stale token
+      }
+
+      // Now make requests
+      const { data, error } = await supabase.from('posts').select('*');
+      const { data: fnData, error: fnError } = await supabase.functions.invoke('hello-user');
+      ```
+
+- **5. Payments (Polar):**
+  - Integrate Polar frontend components/SDK according to their documentation.
+  - Create a Supabase Edge Function (e.g., `supabase/functions/polar-webhook/`) to handle incoming webhooks from Polar.
+    - **Verify Webhook Signatures:** Use the `POLAR_SECRET_KEY` (store as a Supabase secret: `supabase secrets set POLAR_WEBHOOK_SECRET=...`) to validate the authenticity of incoming webhook requests.
+    - Process payment events (e.g., successful charges, subscription updates) and update your Supabase database accordingly (e.g., update user subscription status, grant access to features).
+
+- **6. Deployment:**
+  - **Frontend (Vite):**
+    - Run `pnpm build`. This creates a `dist/` directory with static assets.
+    - Deploy the `dist/` folder to a static hosting provider like Vercel, Netlify, Cloudflare Pages, etc. Configure rewrite rules for client-side routing (SPA mode).
+  - **Backend (Supabase):**
+    - Push database migrations: `supabase migration push` (ensure your linked project is the production one).
+    - Deploy Edge Functions: `supabase functions deploy --project-ref <prod-project-ref>`.
+    - Set necessary environment variables and secrets in the Supabase Cloud dashboard (Settings -> API -> Secrets).
+
+- **Development Cycle:**
+  - **Local:** Use `pnpm dev` for frontend hot-reloading. Use `supabase start` for local Supabase instance (DB + Functions). Test interactions thoroughly. Use `supabase db reset` carefully if needed.
+  - **Staging (Optional but Recommended):** Consider a separate Supabase project for staging. Link CLI to staging ref, push migrations, deploy functions. Test against staging backend.
+  - **Production:** Link CLI to prod ref, push *tested* migrations, deploy *tested* functions. Monitor logs.
+
+- **Key Considerations:**
+  - **RLS is Critical:** Properly configure RLS for data security. Test policies rigorously.
+  - **JWT Handling:** Ensure the Clerk JWT template is correct and the token is consistently passed to Supabase.
+  - **Secrets Management:** Use Supabase secrets (`supabase secrets set/list`) for sensitive keys in Edge Functions, never hardcode them.
+  - **Error Handling:** Implement robust error handling on both client and server (Edge Functions).
+  - **Local Dev Parity:** `supabase start` aims for local parity, but always test cloud-specific behavior (e.g., function cold starts) in a staging environment.
+  - **Migrations:** Treat migrations carefully. Always review diffs (`supabase db diff`). Test rollbacks if necessary (`supabase migration down`). 

@@ -1,0 +1,39 @@
+---
+description: Frontend development guidelines using React for EnginUp South.
+globs: "src/frontend/**/*.js", "src/frontend/**/*.jsx", "src/frontend/**/*.ts", "src/frontend/**/*.tsx" 
+alwaysApply: true
+---
+
+- **Framework:** React
+- **State Management:** Choose one and stick to it (e.g., Zustand for simplicity, Redux Toolkit for larger scale). Document the choice here.
+- **Styling:** Use Tailwind CSS for utility-first styling OR Styled Components/Emotion for component-scoped styles. Define the chosen approach.
+    ```jsx
+    // ✅ DO: Example using Tailwind (if chosen)
+    function UserProfile({ user }) {
+      return (
+        <div className="p-4 border rounded shadow-sm">
+          <h2 className="text-xl font-semibold">{user.name}</h2>
+          <p className="text-gray-600">{user.email}</p> 
+        </div>
+      );
+    }
+    ```
+- **Component Structure:** Organize components logically (e.g., `components/ui`, `components/features/resume`, `pages/`). Prefer functional components with Hooks.
+- **API Interaction:** Use `fetch` API or a library like `axios`. Centralize API call logic (e.g., in a `src/frontend/services/` directory). Handle loading and error states consistently.
+    ```javascript
+    // ✅ DO: Centralized API service example
+    // In src/frontend/services/api.js
+    const API_BASE_URL = '/api/v1'; 
+
+    export const fetchUserProfile = async (userId) => {
+      const response = await fetch(`${API_BASE_URL}/users/${userId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch user profile');
+      }
+      return response.json();
+    };
+    ```
+- **Routing:** Use `react-router-dom` for navigation. Define routes clearly, potentially in a central `App.js` or `routes.js` file.
+- **Linting/Formatting:** Configure ESLint and Prettier with agreed-upon rules. Ensure formatter runs on commit (e.g., via Husky).
+- **Accessibility (a11y):** Use semantic HTML. Ensure keyboard navigability and sufficient color contrast. Use ARIA attributes where necessary.
+- **Regionalization:** Use an i18n library (e.g., `i18next` with `react-i18next`) for all user-facing strings from the start, even if only English is supported initially. See [enginup-regionalization.mdc](mdc:.cursor/rules/enginup-regionalization.mdc). 

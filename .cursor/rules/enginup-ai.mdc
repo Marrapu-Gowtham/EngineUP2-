@@ -1,0 +1,32 @@
+---
+description: Guidelines for integrating AI features (LLMs, etc.) in EnginUp South.
+globs: "src/backend/**/*.py", "src/backend/**/*.js", "src/common/**/*.py", "src/common/**/*.js" # Adjust as needed
+alwaysApply: false
+---
+
+- **Provider/Model Selection:**
+    - Start with API-based models (OpenAI, Anthropic, Google AI) for faster iteration. Specify chosen provider(s) and default models (e.g., `gpt-3.5-turbo`, `claude-3-haiku`).
+    - Consider fine-tuning or using specialized open-source models later if needed for cost or regional nuance (Phase 2/3).
+- **API Key Management:**
+    - **❌ DON'T:** Hardcode API keys in source code.
+    - **✅ DO:** Use environment variables (`process.env` in Node, `os.environ` in Python) loaded via `.env` files (add `.env` to `.gitignore`). Use secrets management in deployment.
+- **Prompt Engineering:**
+    - Develop clear, concise, and context-rich prompts for specific features (Resume Builder, Project Ideas, Coding Assist).
+    - Include system prompts defining the AI's role and constraints (e.g., "You are an assistant helping South Indian engineering students improve their resumes.").
+    - Add regional context to prompts where relevant (e.g., "Suggest keywords relevant for software roles in Bangalore and Hyderabad.").
+    - Store common prompt templates centrally (e.g., `src/common/prompts/`).
+- **Interaction Logic (Backend Preferred):**
+    - **✅ DO:** Perform AI API calls primarily from the backend to protect API keys and manage logic centrally.
+    - Design backend endpoints (e.g., `/api/v1/ai/suggest-resume-keywords`) that the frontend calls.
+- **Response Handling:**
+    - Validate and sanitize AI responses before displaying to users or storing.
+    - Implement robust error handling for API failures (timeouts, rate limits, invalid responses).
+    - Consider caching responses for common, non-personalized queries to reduce costs and latency.
+- **Cost Management:**
+    - Monitor API usage and costs.
+    - Implement rate limiting or usage quotas per user (especially for free tier).
+    - Choose cost-effective models appropriate for the task complexity.
+- **Testing AI Features:**
+    - Develop test cases with sample inputs and expected output *characteristics* (since exact AI output varies).
+    - Check for relevance, safety (no harmful content), and adherence to constraints.
+    - Use evaluation frameworks or manual review for quality assurance. 
